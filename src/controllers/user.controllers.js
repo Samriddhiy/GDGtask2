@@ -1,7 +1,7 @@
 import { User } from "../models/user.model.js";
-//import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-//import fs from "fs";
+import fs from "fs";
 
 const generateAccessandRefreshToken = async(userId) => {
     try {
@@ -29,6 +29,18 @@ const registerUser = async (req, res) => {
   console.log("username", username); 
   console.log("email", email);
   console.log(password);
+
+  const imageFile = req.files["image"] ? req.files["image"][0] : null;
+  let uploadResponse;
+  if (imageFile) {
+    try {
+      uploadResponse = await uploadOnCloudinary(imageFile.path);
+      fs.unlinkSync(imageFile.path);
+    } catch (error) {
+      return res.status(500).json({ message: "Image upload to Cloudinary failed." });
+    }
+  }
+
 
   const existedUser = await User.findOne({
     $or: [{ username }, { email }],
