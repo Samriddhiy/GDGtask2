@@ -23,6 +23,8 @@ const generateAccessandRefreshToken = async(userId) => {
 }
 
 const registerUser = async (req, res) => {
+
+  const imageFile = req.files["image"] ? req.files["image"][0] : null;
     const { fullname, username, email, password } = req.body;
 
   console.log("name", fullname);
@@ -30,14 +32,25 @@ const registerUser = async (req, res) => {
   console.log("email", email);
   console.log(password);
 
-  const imageFile = req.files["image"] ? req.files["image"][0] : null;
+  //const imageFile = req.files["image"] ? req.files["image"][0] : null;
   let uploadResponse;
   if (imageFile) {
     try {
       uploadResponse = await uploadOnCloudinary(imageFile.path);
       fs.unlinkSync(imageFile.path);
-    } catch (error) {
-      return res.status(500).json({ message: "Image upload to Cloudinary failed." });
+    
+  }
+   catch (error) {
+        console.error("Cloudinary upload failed:", error.message);
+        console.error("Error details:", error.response || error);
+    
+        try {
+            fs.unlinkSync(localFilePath);
+        } catch (fsError) {
+            console.error("Failed to delete local file after upload error:", fsError.message);
+        }
+    
+        return null;
     }
   }
 
@@ -56,7 +69,7 @@ const registerUser = async (req, res) => {
     console.log("there")
   const user = await User.create({
     fullname,
-    //image: uploadResponse?.url || "",
+    image: uploadResponse?.url || "",
     email,
     password,
     username: username.toLowerCase(),
