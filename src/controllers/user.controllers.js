@@ -1,4 +1,5 @@
 import { User } from "../models/user.model.js";
+import { Post } from "../models/post.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import fs from "fs";
@@ -33,7 +34,6 @@ const registerUser = async (req, res) => {
   console.log("image", imageFile);
   console.log(password);
 
-  //const imageFile = req.files["image"] ? req.files["image"][0] : null;
   let uploadResponse;
   if (imageFile) {
     try {
@@ -150,8 +150,8 @@ const logoutUser = async(req, res ,next)=> {
       await User.findByIdAndUpdate(userId||
         req.user._id,
         {
-          $set: {
-            refreshToken: undefined
+          $unset: {
+            refreshToken: 1
           }
         },
         {
@@ -174,7 +174,67 @@ const logoutUser = async(req, res ,next)=> {
       next(error);
       
     }
+ }
+
+const changeCurrentPassword = async(req, res , next) =>{
+ try {
+   const {oldPassword , newPassword} = req.body
+   const user = await User.findById(req.user?._id)
+   const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+   if(!isPasswordCorrect){
+     return res.status(400)
+     .json({message:"invalid old password"});
+   }
+   user.password = newPassword
+   await user.save({validateBeforeSave: false})
+ 
+   return res.status(200)
+   .json(new ApiResponse(200, {} , "Password changed successfully"));
+ 
+ }
+ catch (error) {
+  next(error);
+ }
+ } 
+
+const getCurrentUser = async(req, res) => {
+  return res.status(200)
+  .json(200, req.user, "current user fetched successfully");
+}
+
+
+const createPost = async (req, res, next) => {
+  try {
+    const { content } = req.body;
+
+    if (!content) {
+      return res.status(400).json({ message: "Content is required" });
+    }
+    const owner = req.user?._id;
+
+    const newPost = await Post.create({
+      content,
+      owner,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Post created successfully",
+      data: newPost,
+    });
+  } catch (error) {
+    console.error("Error creating post:", error);
+    next(error); 
   }
+};
+
   
-  export { registerUser ,loginUser, logoutUser
+  export { 
+    registerUser,
+    loginUser, 
+    logoutUser,
+    changeCurrentPassword,
+    getCurrentUser, 
+    createPost,
+    
 };
